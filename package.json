@@ -1,0 +1,36 @@
+{
+  "name": "kpi_schedule_to_google_calendar",
+  "version": "1.0.0",
+  "description": "Sync KPI university schedule to Google Calendar",
+  "main": "dist/index.js",
+  "bin": {
+    "kpi-sync": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "sync": "tsx src/index.ts",
+    "reauth": "tsx src/index.ts --reauth",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["kpi", "schedule", "google-calendar", "sync"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^25.2.2",
+    "eslint": "^10.0.0",
+    "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "googleapis": "^171.4.0",
+    "inquirer": "^13.2.2",
+    "open": "^11.0.0"
+  }
+}
