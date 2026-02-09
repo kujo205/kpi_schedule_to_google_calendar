@@ -182,7 +182,14 @@ function createRecurringEvent(
 function analyzeRecurrencePattern(lesson: Lesson): RecurrencePattern {
   const dates = lesson.dates
     .map((date) => parseKyivDateTime(date, lesson.time))
+    .filter((date) => date instanceof Date && !isNaN(date.getTime()))
     .sort((a, b) => a.getTime() - b.getTime());
+
+  if (dates.length === 0) {
+    throw new Error(
+      `No valid dates found for lesson: ${lesson.name} at ${lesson.time}`,
+    );
+  }
 
   const startDate = dates[0];
   const endDate = dates[dates.length - 1];

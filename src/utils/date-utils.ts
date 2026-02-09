@@ -63,6 +63,9 @@ export function getKyivTimezone(): string {
  * Get day of week code for Google Calendar RRULE (MO, TU, WE, TH, FR, SA, SU)
  */
 export function getDayOfWeekCode(date: Date): string {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    throw new Error(`Invalid date provided to getDayOfWeekCode: ${date}`);
+  }
   const dayMap = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
   return dayMap[date.getDay()];
 }
