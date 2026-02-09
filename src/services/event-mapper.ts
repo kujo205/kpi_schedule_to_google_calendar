@@ -9,7 +9,14 @@ import {
   getDayOfWeekCode,
   toRRuleUntilFormat,
   daysBetween,
+  generateSemesterDates,
 } from "../utils/date-utils";
+
+// Extended lesson type to track which week it belongs to
+interface LessonWithWeekInfo extends Lesson {
+  weekType: "first" | "second";
+  dayCode: string;
+}
 
 const LESSON_DURATION_MINUTES = 90;
 
@@ -53,23 +60,29 @@ export function mapLessonsToEvents(
  * Lessons are considered the same if they have matching:
  * - name, time, teacherName, type, place
  */
-function mergeLessonsFromBothWeeks(schedule: KPIScheduleResponse): Lesson[] {
-  const lessonMap = new Map<string, Lesson>();
+function mergeLessonsFromBothWeeks(
+  schedule: KPIScheduleResponse,
+): LessonWithWeekInfo[] {
+  const lessonMap = new Map<string, LessonWithWeekInfo>();
 
-  // Process all lessons from both weeks
-  const allDays = [
-    ...schedule.scheduleFirstWeek,
-    ...schedule.scheduleSecondWeek,
-  ];
-
-  for (const day of allDays) {
+  // Process first week
+  for (const day of schedule.scheduleFirstWeek) {
     for (const lesson of day.pairs) {
-      // Skip lessons with no dates or empty dates array
+      const lessonWithWeek: LessonWithWeekInfo = {
+        ...lesson,
+        weekType: "first",
+        dayCode: day.day,
+      };
+
+      // Generate dates if dates array is empty
       if (!lesson.dates || lesson.dates.length === 0) {
-        console.warn(
-          `Warning: Skipping lesson "${lesson.name}" at ${lesson.time} on ${day.day} - no dates provided`,
-        );
-        continue;
+        lessonWithWeek.dates = generateSemesterDates(day.day, true);
+        if (lessonWithWeek.dates.length === 0) {
+          console.warn(
+            `Warning: Could not generate dates for lesson "${lesson.name}" at ${lesson.time} on ${day.day} (first week)`,
+          );
+          continue;
+        }
       }
 
       // Create a unique key for each distinct class
@@ -78,10 +91,50 @@ function mergeLessonsFromBothWeeks(schedule: KPIScheduleResponse): Lesson[] {
       if (lessonMap.has(key)) {
         // Merge dates from this lesson into the existing one
         const existing = lessonMap.get(key)!;
-        existing.dates = [...existing.dates, ...lesson.dates];
+        existing.dates = [...existing.dates, ...lessonWithWeek.dates];
       } else {
         // First time seeing this lesson, add it to the map
-        lessonMap.set(key, { ...lesson, dates: [...lesson.dates] });
+        lessonMap.set(key, {
+          ...lessonWithWeek,
+          dates: [...lessonWithWeek.dates],
+        });
+      }
+    }
+  }
+
+  // Process second week
+  for (const day of schedule.scheduleSecondWeek) {
+    for (const lesson of day.pairs) {
+      const lessonWithWeek: LessonWithWeekInfo = {
+        ...lesson,
+        weekType: "second",
+        dayCode: day.day,
+      };
+
+      // Generate dates if dates array is empty
+      if (!lesson.dates || lesson.dates.length === 0) {
+        lessonWithWeek.dates = generateSemesterDates(day.day, false);
+        if (lessonWithWeek.dates.length === 0) {
+          console.warn(
+            `Warning: Could not generate dates for lesson "${lesson.name}" at ${lesson.time} on ${day.day} (second week)`,
+          );
+          continue;
+        }
+      }
+
+      // Create a unique key for each distinct class
+      const key = createLessonKey(lesson);
+
+      if (lessonMap.has(key)) {
+        // Merge dates from this lesson into the existing one
+        const existing = lessonMap.get(key)!;
+        existing.dates = [...existing.dates, ...lessonWithWeek.dates];
+      } else {
+        // First time seeing this lesson, add it to the map
+        lessonMap.set(key, {
+          ...lessonWithWeek,
+          dates: [...lessonWithWeek.dates],
+        });
       }
     }
   }
@@ -101,10 +154,11 @@ function createLessonKey(lesson: Lesson): string {
  * Now with smart recurrence detection for weekly/biweekly patterns
  */
 function createEventsFromLesson(lesson: Lesson): CalendarEvent[] {
-  // Skip lessons with no dates
+  // At this point, dates should always exist due to generation in merge phase
+  // But keep safety check just in case
   if (!lesson.dates || lesson.dates.length === 0) {
     console.warn(
-      `Warning: Skipping lesson "${lesson.name}" at ${lesson.time} - no dates provided`,
+      `Warning: Skipping lesson "${lesson.name}" at ${lesson.time} - no dates after processing`,
     );
     return [];
   }

@@ -84,3 +84,85 @@ export function daysBetween(date1: Date, date2: Date): number {
   const ms = Math.abs(date2.getTime() - date1.getTime());
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
+
+/**
+ * Get the day of week number from Ukrainian abbreviation
+ * Returns 0-6 (Sunday=0, Monday=1, etc.)
+ */
+export function getDayNumberFromUkrCode(dayCode: string): number {
+  const dayMap: Record<string, number> = {
+    Пн: 1, // Monday
+    Вв: 2, // Tuesday
+    Ср: 3, // Wednesday
+    Чт: 4, // Thursday
+    Пт: 5, // Friday
+    Сб: 6, // Saturday
+  };
+
+  return dayMap[dayCode] ?? -1;
+}
+
+/**
+ * Generate dates for a semester week pattern
+ * For lessons with empty dates arrays, we generate dates based on:
+ * - The day of week (e.g., "Пн" = Monday)
+ * - Whether it's first week or second week pattern
+ * - A semester date range (default: current date to end of semester)
+ */
+export function generateSemesterDates(
+  dayCode: string,
+  isFirstWeek: boolean,
+  semesterStart?: Date,
+  semesterEnd?: Date,
+): string[] {
+  const dayNumber = getDayNumberFromUkrCode(dayCode);
+  if (dayNumber === -1) {
+    console.warn(`Unknown day code: ${dayCode}`);
+    return [];
+  }
+
+  // Default semester range: current date to 6 months from now
+  const start = semesterStart || new Date();
+  const end = semesterEnd || addMonths(new Date(), 6);
+
+  // Find the first occurrence of the target day
+  let currentDate = new Date(start);
+
+  // Move to the first occurrence of the target day of week
+  while (currentDate.getDay() !== dayNumber) {
+    currentDate = addDays(currentDate, 1);
+  }
+
+  // For second week pattern, start from the second week
+  if (!isFirstWeek) {
+    currentDate = addDays(currentDate, 7);
+  }
+
+  const dates: string[] = [];
+
+  // Generate dates every 2 weeks (biweekly pattern)
+  while (currentDate <= end) {
+    dates.push(format(currentDate, "yyyy-MM-dd"));
+    currentDate = addDays(currentDate, 14); // Add 2 weeks
+  }
+
+  return dates;
+}
+
+/**
+ * Add days to a date
+ */
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/**
+ * Add months to a date
+ */
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
+}
