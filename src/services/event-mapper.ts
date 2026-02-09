@@ -64,6 +64,14 @@ function mergeLessonsFromBothWeeks(schedule: KPIScheduleResponse): Lesson[] {
 
   for (const day of allDays) {
     for (const lesson of day.pairs) {
+      // Skip lessons with no dates or empty dates array
+      if (!lesson.dates || lesson.dates.length === 0) {
+        console.warn(
+          `Warning: Skipping lesson "${lesson.name}" at ${lesson.time} on ${day.day} - no dates provided`,
+        );
+        continue;
+      }
+
       // Create a unique key for each distinct class
       const key = createLessonKey(lesson);
 
@@ -93,6 +101,14 @@ function createLessonKey(lesson: Lesson): string {
  * Now with smart recurrence detection for weekly/biweekly patterns
  */
 function createEventsFromLesson(lesson: Lesson): CalendarEvent[] {
+  // Skip lessons with no dates
+  if (!lesson.dates || lesson.dates.length === 0) {
+    console.warn(
+      `Warning: Skipping lesson "${lesson.name}" at ${lesson.time} - no dates provided`,
+    );
+    return [];
+  }
+
   // If only one date, create a single event (no recurrence needed)
   if (lesson.dates.length === 1) {
     return [createSingleEvent(lesson, lesson.dates[0])];
@@ -114,27 +130,36 @@ function createEventsFromLesson(lesson: Lesson): CalendarEvent[] {
  * Create a single non-recurring event
  */
 function createSingleEvent(lesson: Lesson, date: string): CalendarEvent {
-  const startTime = parseKyivDateTime(date, lesson.time);
-  const endTime = addMinutesToDate(startTime, LESSON_DURATION_MINUTES);
+  try {
+    const startTime = parseKyivDateTime(date, lesson.time);
+    if (!startTime || isNaN(startTime.getTime())) {
+      throw new Error(`Invalid date/time: ${date} ${lesson.time}`);
+    }
+    const endTime = addMinutesToDate(startTime, LESSON_DURATION_MINUTES);
 
-  return {
-    summary: formatEventTitle(lesson),
-    description: formatEventDescription(lesson),
-    location: lesson.place || undefined,
-    start: {
-      dateTime: toRFC3339(startTime),
-      timeZone: getKyivTimezone(),
-    },
-    end: {
-      dateTime: toRFC3339(endTime),
-      timeZone: getKyivTimezone(),
-    },
-    extendedProperties: {
-      private: {
-        uniqueHash: generateEventHash(lesson, date),
+    return {
+      summary: formatEventTitle(lesson),
+      description: formatEventDescription(lesson),
+      location: lesson.place || undefined,
+      start: {
+        dateTime: toRFC3339(startTime),
+        timeZone: getKyivTimezone(),
       },
-    },
-  };
+      end: {
+        dateTime: toRFC3339(endTime),
+        timeZone: getKyivTimezone(),
+      },
+      extendedProperties: {
+        private: {
+          uniqueHash: generateEventHash(lesson, date),
+        },
+      },
+    };
+  } catch (error) {
+    throw new Error(
+      `Failed to create event for lesson "${lesson.name}" on ${date} at ${lesson.time}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /**
@@ -180,16 +205,48 @@ function createRecurringEvent(
  * Analyze dates to detect weekly or biweekly recurrence patterns
  */
 function analyzeRecurrencePattern(lesson: Lesson): RecurrencePattern {
-  const dates = lesson.dates
-    .map((date) => parseKyivDateTime(date, lesson.time))
-    .filter((date) => date instanceof Date && !isNaN(date.getTime()))
-    .sort((a, b) => a.getTime() - b.getTime());
-
-  if (dates.length === 0) {
+  // Check if dates array exists and has elements
+  if (!lesson.dates || lesson.dates.length === 0) {
     throw new Error(
-      `No valid dates found for lesson: ${lesson.name} at ${lesson.time}`,
+      `No dates array found for lesson: ${lesson.name} at ${lesson.time}\n` +
+        `Lesson data: ${JSON.stringify(lesson, null, 2)}`,
     );
   }
+
+  // Parse and validate dates
+  const parsedDates: Array<{ original: string; parsed: Date | null }> =
+    lesson.dates.map((date) => {
+      try {
+        const parsed = parseKyivDateTime(date, lesson.time);
+        return {
+          original: date,
+          parsed:
+            parsed instanceof Date && !isNaN(parsed.getTime()) ? parsed : null,
+        };
+      } catch (error) {
+        return { original: date, parsed: null };
+      }
+    });
+
+  const validDates = parsedDates
+    .filter((d) => d.parsed !== null)
+    .map((d) => d.parsed!)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (validDates.length === 0) {
+    const invalidDates = parsedDates
+      .filter((d) => d.parsed === null)
+      .map((d) => d.original);
+    throw new Error(
+      `No valid dates found for lesson: ${lesson.name} at ${lesson.time}\n` +
+        `Total dates: ${lesson.dates.length}\n` +
+        `Invalid dates: ${invalidDates.join(", ")}\n` +
+        `Date format expected: yyyy-MM-dd (e.g., 2026-02-10)\n` +
+        `Time format expected: HH:mm:ss (e.g., 10:25:00)`,
+    );
+  }
+
+  const dates = validDates;
 
   const startDate = dates[0];
   const endDate = dates[dates.length - 1];
