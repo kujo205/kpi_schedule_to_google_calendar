@@ -4,6 +4,7 @@ export interface CalendarEvent {
   summary: string;
   description: string;
   location?: string;
+  colorId?: string;
   start: {
     dateTime: string;
     timeZone: string;

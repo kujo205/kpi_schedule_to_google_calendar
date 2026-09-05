@@ -195,6 +195,7 @@ function createSingleEvent(lesson: Lesson, date: string): CalendarEvent {
       summary: formatEventTitle(lesson),
       description: formatEventDescription(lesson),
       location: lesson.location || undefined,
+      colorId: getEventColorId(lesson.tag),
       start: {
         dateTime: toRFC3339(startTime),
         timeZone: getKyivTimezone(),
@@ -237,6 +238,7 @@ function createRecurringEvent(
     summary: formatEventTitle(lesson),
     description: formatEventDescription(lesson),
     location: lesson.location || undefined,
+    colorId: getEventColorId(lesson.tag),
     start: {
       dateTime: toRFC3339(startTime),
       timeZone: getKyivTimezone(),
@@ -362,6 +364,16 @@ function analyzeRecurrencePattern(lesson: Lesson): RecurrencePattern {
     endDate,
     dayOfWeek,
   };
+}
+
+// Google Calendar colorId: 5=Banana(yellow), 7=Peacock(blue), 8=Graphite(grey)
+function getEventColorId(tag: string): string | undefined {
+  switch (tag) {
+    case "prac": return "5";
+    case "lab":  return "7";
+    case "lec":  return "8";
+    default:     return undefined;
+  }
 }
 
 /**
