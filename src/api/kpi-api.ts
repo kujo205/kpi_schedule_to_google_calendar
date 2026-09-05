@@ -38,12 +38,10 @@ export async function fetchSchedule(
 }
 
 /**
- * Validate group ID format (UUID)
+ * Validate group ID format (positive integer)
  */
 export function isValidGroupId(groupId: string): boolean {
-  const uuidRegex =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(groupId);
+  return /^\d+$/.test(groupId) && parseInt(groupId, 10) > 0;
 }
 
 /**

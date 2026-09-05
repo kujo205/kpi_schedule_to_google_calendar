@@ -58,7 +58,7 @@ export function mapLessonsToEvents(
 /**
  * Merge lessons from both weeks that represent the same class
  * Lessons are considered the same if they have matching:
- * - name, time, teacherName, type, place
+ * - name, time, lecturer.name, type, location
  */
 function mergeLessonsFromBothWeeks(
   schedule: KPIScheduleResponse,
@@ -146,7 +146,7 @@ function mergeLessonsFromBothWeeks(
  * Create a unique key for a lesson to identify the same class across weeks
  */
 function createLessonKey(lesson: Lesson): string {
-  return `${lesson.name}|${lesson.time}|${lesson.teacherName}|${lesson.type}|${lesson.place}`;
+  return `${lesson.name}|${lesson.time}|${lesson.lecturer.name}|${lesson.type}|${lesson.location}`;
 }
 
 /**
@@ -194,7 +194,7 @@ function createSingleEvent(lesson: Lesson, date: string): CalendarEvent {
     return {
       summary: formatEventTitle(lesson),
       description: formatEventDescription(lesson),
-      location: lesson.place || undefined,
+      location: lesson.location || undefined,
       start: {
         dateTime: toRFC3339(startTime),
         timeZone: getKyivTimezone(),
@@ -231,12 +231,12 @@ function createRecurringEvent(
   const rrule = `RRULE:FREQ=WEEKLY;INTERVAL=${pattern.interval};BYDAY=${pattern.dayOfWeek};UNTIL=${toRRuleUntilFormat(pattern.endDate)}`;
 
   // Create a pattern identifier for duplicate detection
-  const recurrencePattern = `${lesson.name}-${lesson.time}-${lesson.teacherName}-${pattern.type}-${pattern.interval}`;
+  const recurrencePattern = `${lesson.name}-${lesson.time}-${lesson.lecturer.name}-${pattern.type}-${pattern.interval}`;
 
   return {
     summary: formatEventTitle(lesson),
     description: formatEventDescription(lesson),
-    location: lesson.place || undefined,
+    location: lesson.location || undefined,
     start: {
       dateTime: toRFC3339(startTime),
       timeZone: getKyivTimezone(),
@@ -368,7 +368,7 @@ function analyzeRecurrencePattern(lesson: Lesson): RecurrencePattern {
  * Format event title: "Lesson Name (Type) - Teacher Initials"
  */
 function formatEventTitle(lesson: Lesson): string {
-  const shortTeacher = shortenTeacherName(lesson.teacherName);
+  const shortTeacher = shortenTeacherName(lesson.lecturer.name);
   return `${lesson.name} (${lesson.type}) - ${shortTeacher}`;
 }
 
@@ -376,13 +376,13 @@ function formatEventTitle(lesson: Lesson): string {
  * Format event description with metadata
  */
 function formatEventDescription(lesson: Lesson): string {
-  const location = lesson.place || "Не вказано";
+  const location = lesson.location || "Не вказано";
 
-  return `Викладач: ${lesson.teacherName}
+  return `Викладач: ${lesson.lecturer.name}
 Тип: ${lesson.type}
 Аудиторія: ${location}
 
-ID викладача: ${lesson.lecturerId}`;
+ID викладача: ${lesson.lecturer.id}`;
 }
 
 /**
@@ -411,7 +411,7 @@ function shortenTeacherName(fullName: string): string {
  * Generate unique hash for event (for duplicate detection)
  */
 function generateEventHash(lesson: Lesson, date: string): string {
-  const hashContent = `${date}-${lesson.time}-${lesson.name}-${lesson.teacherName}`;
+  const hashContent = `${date}-${lesson.time}-${lesson.name}-${lesson.lecturer.name}`;
   return crypto.createHash("sha256").update(hashContent).digest("hex");
 }
 
@@ -422,6 +422,6 @@ function generateRecurringEventHash(
   lesson: Lesson,
   pattern: RecurrencePattern,
 ): string {
-  const hashContent = `${pattern.startDate.toISOString()}-${pattern.endDate.toISOString()}-${lesson.time}-${lesson.name}-${lesson.teacherName}-${pattern.type}-${pattern.interval}`;
+  const hashContent = `${pattern.startDate.toISOString()}-${pattern.endDate.toISOString()}-${lesson.time}-${lesson.name}-${lesson.lecturer.name}-${pattern.type}-${pattern.interval}`;
   return crypto.createHash("sha256").update(hashContent).digest("hex");
 }

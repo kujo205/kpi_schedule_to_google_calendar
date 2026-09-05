@@ -10,8 +10,6 @@ export interface ScheduleDay {
 }
 
 export interface Lesson {
-  teacherName: string;
-  lecturerId: string;
   lecturer: {
     id: string;
     name: string;
@@ -19,7 +17,6 @@ export interface Lesson {
   type: string;
   time: string;
   name: string;
-  place: string;
   location: string | null;
   tag: string;
   dates: string[];

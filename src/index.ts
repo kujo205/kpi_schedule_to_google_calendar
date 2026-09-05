@@ -39,7 +39,7 @@ async function main() {
     if (!groupId) {
       error("Usage: pnpm sync <groupId>");
       error("");
-      error("Example: pnpm sync 482eb988-e88c-47dc-8246-7cc7daa7c752");
+      error("Example: pnpm sync 6155");
       error("");
       error("To re-authenticate: pnpm sync --reauth");
       process.exit(1);
@@ -47,8 +47,8 @@ async function main() {
 
     // Validate group ID
     if (!isValidGroupId(groupId)) {
-      error("Invalid group ID format. Expected UUID.");
-      error("Example: 482eb988-e88c-47dc-8246-7cc7daa7c752");
+      error("Invalid group ID format. Expected a positive integer.");
+      error("Example: pnpm sync 6155");
       process.exit(1);
     }
 
